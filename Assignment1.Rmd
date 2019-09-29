@@ -84,7 +84,7 @@ library(corrplot)
 library(knitr)
 
 # Read data and clear data.
-raw <- read.csv('./data/raw/Melbourne_housing_FULL.csv', stringsAsFactors = F)
+raw <- read.csv('./data/raw/Melbourne_housing_FULL.csv',stringsAsFactors = F)
 
 # We only look at Method: S - property sold; SP - property sold prior
 clean <- subset(raw, (Method=="S" | Method=="SP") & (Price != ""))
@@ -99,27 +99,90 @@ validation <- clean[-validation_index,]
 dataset <- clean[validation_index,]
 
 dataset$Distance <- as.numeric(as.character(dataset$Distance))
+
+
+dataset$Propertycount <- as.numeric(as.character(dataset$Propertycount))
 ```
 
-# Corelation matrix
+# Corelation Graph
 ```{r}
 library("ggpubr")
-ggscatter(dataset, x = "Distance", y = "Price", 
+ggscatter(dataset, x = "Propertycount", y = "Price", 
           add = "reg.line", conf.int = TRUE, 
           cor.coef = TRUE, cor.method = "pearson",
-          xlab = "Miles", ylab = "Dollars")
+          xlab = "Squre Feet", ylab = "Dollars")
 ```
+
+#Correlation Matrix
+```{r}
+
+naomitData = na.omit(dataset)
+numeric_cols = sapply(naomitData, is.numeric)
+data_num_only=naomitData[,numeric_cols]
+head(data_num_only)
+
+data_num_subset = naomitData[ , c("Rooms", "Price", "Distance", "Bedroom2", "Bathroom", "Car", "Landsize", "BuildingArea", "YearBuilt", "Propertycount")]
+head(data_num_subset)
+cor(data_num_subset)
+```
+
 
 # dimesion of the dataset
 ```{r setup, include=FALSE}
-dim(dataset)
+dim(naomitData)
 
-head(dataset)
+head(naomitData)
+```
+
+## MODEL AND MODEL DEVELOPMENT
+
+```{r, echo=F, warning=F, message=F}
+#Creating a base Linear Model using all the predictors.
+lm_all <- standardize(
+  lm(
+    Price ~ Rooms +  Distance +  Bedroom2 +  BuildingArea + Bathroom + YearBuilt      
+    
+    , data = naomitData
+  )
+)
+summary(lm_all)
+```
+```{r}
+lm_mod5 <- lm(
+    log(Price) ~ Rooms +  Distance +  Bedroom2 +  BuildingArea + Bathroom + YearBuilt      
+    
+    , data = naomitData
+  )
+summary(standardize(lm_mod5))
+cat("RMSE of the final model", rmse(train$SalePrice, exp(predict(lm_mod5))))  
+```
+# Divide the Train Dataset to test and train sets, for predicting the RMSE and R2
+
+```{r, echo=F, warning=F, message=F}
+library(Metrics)
+train_part <- sample(nrow(naomitData), 0.7*nrow(naomitData), replace = F)
+set.seed(123)
+new_test <- naomitData[-train_part, ]
+new_prediction <- predict(lm_mod5, newdata= new_test)
+cat("RMSE on Test model", rmse(new_test$Price, exp(new_prediction)))  
+R2 <- function(y, yhat, ybar, digits = 2) {
+  1 - sum((y - yhat)^2)/sum((y - ybar)^2)
+}
+actualR2<-R2(y = new_test$Price, yhat = exp(predict(lm_mod5,newdata = new_test)), 
+             mean(new_test$Price))
+round(actualR2,2)
+# Performing Cross Validation on Training Set
+lm_model_cv <-train( log(Price) ~ Rooms +  Distance +  Bedroom2 +  BuildingArea + Bathroom + YearBuilt,
+                     data = naomitData,
+                     method= "lm",
+                     trControl= trainControl(method="cv", number=10))
+cat("RMSE: ", rmse(naomitData$Price, exp(predict(lm_model_cv, newdata= naomitData))))
+lm_model_cv$results$Rsquared
 ```
 
 # list types for each attribute
 ```{r setup, include=FALSE}
-sapply(dataset, class)
+t(sapply(dataset, class))
 ```
 # take a peek at the first 5 rows of the data
 ```{r setup, include=FALSE}
