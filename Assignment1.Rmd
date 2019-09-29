@@ -9,19 +9,240 @@ output: html_document
 # Introduction
 Melbourne is currently experiencing a housing bubble (some experts say it may burst soon). Maybe someone can find a trend or give a prediction? Which suburbs are the best to buy in? Which ones are value for money? Where's the expensive side of town? And more importantly where should I buy a 2 bedroom unit?
 
+Some Key Details:
+
+Suburb: Suburb
+
+Address: Address
+
+Rooms: Number of rooms
+
+Price: Price in Australian dollars
+
+Method: S - property sold; SP - property sold prior; PI - property passed in; PN - sold prior not disclosed; SN - sold not disclosed; NB - no bid; VB - vendor bid; W - withdrawn prior to auction; SA - sold after auction; SS - sold after auction price not disclosed. N/A - price or highest bid not available.
+
+Type: br - bedroom(s); h - house,cottage,villa, semi,terrace; u - unit, duplex; t - townhouse; dev site - development site; o res - other residential.
+
+SellerG: Real Estate Agent
+
+Date: Date sold
+
+Distance: Distance from CBD in Kilometres
+
+Regionname: General Region (West, North West, North, North east ...etc)
+
+Propertycount: Number of properties that exist in the suburb.
+
+Bedroom2 : Scraped # of Bedrooms (from different source)
+
+Bathroom: Number of Bathrooms
+
+Car: Number of carspots
+
+Landsize: Land Size in Metres
+
+BuildingArea: Building Size in Metres
+
+YearBuilt: Year the house was built
+
+CouncilArea: Governing council for the area
+
+Lattitude: Self explanitory
+
+Longtitude: Self explanitory
 There are three parts to my script as follows:
 
 * Feature engineering
 * Missing value imputation
 * Prediction!
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
 ```
+
+```{r, echo=F, warning=F, message=F, include=FALSE}
 # Load packages
 library('ggplot2') # visualization
 library('ggthemes') # visualizsation
 library('scales') # visualization
 library('dplyr') # data manipulation
 library('mice') # imputation
+library(mlbench)
+library(ggplot2)
+library(lars)
+library(RColorBrewer)
+library(reshape2)
+library(ggplot2)
+library(e1071)
+library(dplyr)
+library(Amelia)
+library(RANN)
+library(arm)
+library(caret)
+library(ipred)
+library(corrplot)
+library(knitr)
+
+# Read data and clear data.
+raw <- read.csv('./data/raw/Melbourne_housing_FULL.csv', stringsAsFactors = F)
+
+# We only look at Method: S - property sold; SP - property sold prior
+clean <- subset(raw, (Method=="S" | Method=="SP") & (Price != ""))
+
+# create a list of 80% of the rows in the original dataset we can use for training
+validation_index <- createDataPartition(clean$Price, p=0.80, list=FALSE)
+
+# select 20% of the data for validation
+validation <- clean[-validation_index,]
+
+# use the remaining 80% of data to training and testing the models
+dataset <- clean[validation_index,]
+
+dataset$Distance <- as.numeric(as.character(dataset$Distance))
 ```
 
-raw <- read.csv('./data/raw/Melbourne_housing_FULL.csv', stringsAsFactors = F)
+# Corelation matrix
+```{r}
+library("ggpubr")
+ggscatter(dataset, x = "Distance", y = "Price", 
+          add = "reg.line", conf.int = TRUE, 
+          cor.coef = TRUE, cor.method = "pearson",
+          xlab = "Miles", ylab = "Dollars")
+```
+
+# dimesion of the dataset
+```{r setup, include=FALSE}
+dim(dataset)
+
+head(dataset)
+```
+
+# list types for each attribute
+```{r setup, include=FALSE}
+sapply(dataset, class)
+```
+# take a peek at the first 5 rows of the data
+```{r setup, include=FALSE}
+head(dataset)
+```
+
+# list the levels for the class
+```{r}
+levels(dataset$Price)
+```
+
+# summarize the class distribution
+```{r setup, include=FALSE}
+percentage <- prop.table(table(dataset$Rooms)) * 100
+cbind(freq=table(dataset$Rooms), percentage=percentage)
+
+#TODO
+hist((dataset$Rooms), percentage)
+```
+
+# summarize attribute distributions
+```{r}
+summary(dataset)
+```
+# convert some of the fields to numeric
+``
+dataset$Distance <- as.numeric(as.character(dataset$Distance))
+``
+x <- dataset[1:4]
+y <- dataset[5]
+cor(x, y)
+
+# Impute missing data
+```
+imputed_Data <- mice(dataset, m=5, maxit = 50, method = 'pmm', seed = 500)
+```
+# split input and output
+```
+x <- dataset[,c(3,12,13,14)]
+y <- dataset[,5]
+```
+rcorr(dataset, type="pearson")
+# boxplot for each attribute on one image
+```
+par(mfrow=c(3,12,13,14))
+  for(i in c(3,12,13,14)){ 
+    boxplot(x[,i], main=names(raw)[i])
+  }
+```
+
+
+
+## Data Analysis
+
+
+```{r, echo=F, warning=F, message=F}
+# Below is the summary of all missing value information.
+# Train Set:
+numCols_tr <- NULL
+charCols_tr <- NULL
+misc_tr <- NULL
+for (i in 1:ncol(dataset)){
+  if(is.numeric(dataset[,i])){
+    numCols_tr <- c(numCols_tr, names(dataset)[i])
+  }
+  else if(is.character(dataset[,i])){
+    charCols_tr <- c(charCols_tr,names(dataset)[i])
+  }
+  else {
+    misc_tr <- c(misc_tr,names(dataset)[i])
+  }
+}
+mis_vars <-data.frame(colSums(sapply(dataset, is.na)))
+mis_vars$num_yn <- "Z"
+for(i in 1:nrow(mis_vars)){
+  if( rownames(mis_vars)[i] %in% numCols_tr){
+    mis_vars[i,2] <- "Y"
+  }else{
+    mis_vars[i,2] <- "N"
+  }
+}
+colnames(mis_vars) <- c('No_of_NAs', 'Numerical(y/n)')
+#mis_vars <- mis_vars[order(mis_vars$'Numerical(y/n)')]
+kable(subset(mis_vars, No_of_NAs > 0 ))
+# Test set:
+numCols_te <- NULL
+charCols_te <- NULL
+misc_te <- NULL
+for (i in 1:ncol(validation)){
+  if(is.numeric(validation[,i])){
+    numCols_te <- c(numCols_te,names(validation)[i])
+  }
+  else if(is.character(validation[,i])){
+    charCols_te <- c(charCols_te,names(validation)[i])
+  }
+  else {
+    misc_te <- c(misc_te,names(validation)[i])
+  }
+}
+mis_vars_te <-data.frame(colSums(sapply(validation, is.na)))
+mis_vars_te$num_yn <- "Z"
+for(i in 1:nrow(mis_vars_te)){
+  if( rownames(mis_vars_te)[i] %in% numCols_te){
+    mis_vars_te[i,2] <- "Y"
+  }else{
+    mis_vars_te[i,2] <- "N"
+  }
+}
+colnames(mis_vars_te) <- c('No_of_NAs','Numerical(y/n)')
+mis_vars_te <- mis_vars_te[order(mis_vars_te$`Numerical(y/n)`),]
+kable(subset(mis_vars_te, No_of_NAs > 0 ))
+```
+
+```{r, echo=F, warning=F, message=F, include=FALSE}
+# Replacing NA Values
+# Numeric variables
+# Train Set
+bagImpute_tr <- predict(preProcess(train[,which(names(train) %in% 
+                        c('GarageYrBlt', 'MasVnrArea', 'LotFrontage'))], 
+                        method = c("bagImpute")), 
+                        train[,which(names(train) %in% 
+                        c('GarageYrBlt', 'MasVnrArea', 'LotFrontage'))])
+train$GarageYrBlt <- round(bagImpute_tr$GarageYrBlt)
+train$MasVnrArea <- bagImpute_tr$MasVnrArea
+train$LotFrontage <- bagImpute_tr$LotFrontage
+```
