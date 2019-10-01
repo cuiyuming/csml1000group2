@@ -148,7 +148,12 @@ naomitData <- naomitData[-which(naomitData$Price %in% outliers),]
 
 boxplot(naomitData$Price)
 ```
-
+#
+```{r}
+library(dplyr)
+print(getwd())
+saveRDS(naomitData, file = "./data/clean/clean.Rds")
+```
 ## MODEL AND MODEL DEVELOPMENT
 
 ```{r, echo=F, warning=F, message=F}
