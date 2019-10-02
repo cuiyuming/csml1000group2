@@ -31,7 +31,7 @@ navbarPage("Melbourne Housing", id="nav",
                                       draggable = TRUE, top = 60, left = "auto", right = 20, bottom = "auto",
                                       width = 330, height = "auto",
                                       
-                                      h2("Select Number of Rooms"),
+                                      h2("Number of Rooms"),
                                       
                                       selectInput("rooms", "rooms", vars)
                 

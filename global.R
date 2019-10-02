@@ -1,3 +1,3 @@
 library(dplyr)
 
-allhouses <- readRDS('./data/clean/clean.Rds')
+allhouses <- readRDS('./data/clean/traindata.Rds')

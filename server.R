@@ -36,8 +36,11 @@ server <- function(input, output) {
     
     #show(rooms)
     
-    filteredData <- allhouses[allhouses$Rooms == rooms,]
-    
+    if(rooms < 10){
+      filteredData <- allhouses[allhouses$Rooms == rooms,]
+    }else{
+      filteredData <- allhouses[allhouses$Rooms >= rooms,]
+    }
     colorData <- filteredData[["Price"]]
     pal <- colorBin("viridis", colorData, 7, pretty = FALSE)
     
@@ -61,6 +64,7 @@ server <- function(input, output) {
       clearShapes() %>%
       addCircles(radius=radius, 
                  stroke=FALSE, fillOpacity=0.6, fillColor=pal(colorData)) %>%
+      
       addLegend("bottomleft", pal=pal, values=colorData, title=rooms,
                 layerId="colorLegend")
      
