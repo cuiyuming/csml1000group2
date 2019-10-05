@@ -1,3 +1,3 @@
 library(dplyr)
 
-allhouses <- readRDS('./data/clean/traindata.Rds')
+allhouses<-na.omit(readRDS('./data/clean/traindata.Rds'))

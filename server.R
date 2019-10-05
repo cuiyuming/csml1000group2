@@ -32,42 +32,75 @@ server <- function(input, output) {
   })
   
   observe({
-    rooms <- input$rooms
+    minPrice <- input$price[1]
+    maxPrice <- input$price[2]
     
-    #show(rooms)
+    minRooms <- input$rooms[1]
+    maxRooms <- input$rooms[2]
     
-    if(rooms < 10){
-      filteredData <- allhouses[allhouses$Rooms == rooms,]
-    }else{
-      filteredData <- allhouses[allhouses$Rooms >= rooms,]
-    }
+    minYear <- input$year[1]
+    maxYear <- input$year[2]
+    
+    minDistance <- input$distance[1]
+    maxDistance <- input$distance[2]
+    
+    filteredData <- allhouses %>% 
+      filter(Rooms >= minRooms,
+             Rooms <= maxRooms,
+             YearBuilt >= minYear,
+             YearBuilt <= maxYear,
+             Distance >= minDistance,
+             Distance <= maxDistance,
+             Price >= minPrice,
+             Price <= maxPrice)
+    
     colorData <- filteredData[["Price"]]
-    pal <- colorBin("viridis", colorData, 7, pretty = FALSE)
     
-    #show(pal)
+    pal <- colorBin("viridis", colorData, 7, pretty = FALSE)
     
     geoData <- filteredData %>% 
       select(
-        Suburb = Suburb,
-        Address = Address,
-        Price = Price,
-        Rooms = Rooms,
+        address = Address,
+        price = Price,
+        rooms = Rooms,
         longitude = Longtitude,
         latitude = Lattitude
       )
-    #show(geoData)
-    maxPrice <- max(geoData[["Price"]]) 
-    radius <- geoData[["Price"]] / maxPrice * 500
+
+    maxPrice <- max(geoData[["price"]]) 
+    radius <- geoData[["price"]] / maxPrice * 500
     
-    show(radius)
     leafletProxy("map", data = geoData) %>%
       clearShapes() %>%
       addCircles(radius=radius, 
-                 stroke=FALSE, fillOpacity=0.6, fillColor=pal(colorData)) %>%
+                 stroke=FALSE, fillOpacity=0.6, layerId = ~address, fillColor=pal(colorData)) %>%
       
-      addLegend("bottomleft", pal=pal, values=colorData, title=rooms,
+      addLegend("bottomleft", pal=pal, values=colorData, title="Price Range",
                 layerId="colorLegend")
      
+  })
+  
+  # Show a popup at the given location
+  showPopup <- function(address, lat, lng) {
+    selectedHouse <- allhouses[allhouses$Address == address,]
+    content <- as.character(tagList(
+      tags$h4("Price:", dollar(selectedHouse$Price),
+      tags$br(),
+      sprintf("Address: %s", selectedHouse$Address), tags$br()
+    )))
+    leafletProxy("map") %>% addPopups(lng, lat, content, layerId = address)
+  }
+  
+  # When map is clicked, show a popup with city info
+  observe({
+    leafletProxy("map") %>% clearPopups()
+    event <- input$map_shape_click
+    if (is.null(event))
+      return()
+    
+    isolate({
+      showPopup(event$id, event$lat, event$lng)
+    })
   })
   
 }

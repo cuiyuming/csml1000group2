@@ -13,7 +13,7 @@ vars <- c(
   "10+ rooms" = 10
 )
 navbarPage("Melbourne Housing", id="nav",
-           
+          
            tabPanel("Interactive map",
                     div(class="outer",
                           
@@ -27,15 +27,23 @@ navbarPage("Melbourne Housing", id="nav",
                         leafletOutput("map", width="100%", height="100%"),
                         
                         # Shiny versions prior to 0.11 should use class = "modal" instead.
-                        absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE,
-                                      draggable = TRUE, top = 60, left = "auto", right = 20, bottom = "auto",
+                        absolutePanel(id = "controls", class = "panel panel-default", 
+                                      draggable = FALSE, top = 60, left = "auto", right = 20, bottom = "auto",
                                       width = 330, height = "auto",
                                       
-                                      h2("Number of Rooms"),
+                                      h2("Filters"),
+                                      sliderInput("price", "Price Range", 185000, 2070000, value = c(185000, 2070000), step = 10000, sep = "", round = TRUE, dragRange = FALSE),
+                                  
+                                        sliderInput("rooms", "Number of Rooms", 1, 12, value = c(1, 3), sep = "", round = TRUE, dragRange = FALSE),
+                                        
+                                        sliderInput("year", "Build Year", 1830, 2018, value = c(1990, 2000), sep = "", round = TRUE, dragRange = FALSE),
+                                    
+                                        sliderInput("distance", "Distance to CBD", 0, 50, value = c(0, 10), sep = "", round = TRUE, dragRange = FALSE)
                                       
-                                      selectInput("rooms", "rooms", vars)
                 
                         ),
+                        
+                        
                         tags$div(id="cite",
                                  'Data compiled for ', tags$em('xxx'), ' by CSML1000 Group2'
                         )

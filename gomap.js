@@ -2,14 +2,13 @@
 $(document).on("click", ".go-map", function(e) {
   e.preventDefault();
   $el = $(this);
-  var lat = $el.data("lat");
-  var long = $el.data("long");
-  var zip = $el.data("zip");
+  var lat = $el.data("Lattitude");
+  var lng = $el.data("longitude");
+  var address = $el.data("address");
   $($("#nav a")[0]).tab("show");
   Shiny.onInputChange("goto", {
-    lat: lat,
+    lat: long,
     lng: long,
-    zip: zip,
-    nonce: Math.random()
+    address:String
   });
 });
