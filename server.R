@@ -84,10 +84,17 @@ server <- function(input, output) {
   showPopup <- function(address, lat, lng) {
     selectedHouse <- allhouses[allhouses$Address == address,]
     content <- as.character(tagList(
-      tags$h4("Price:", dollar(selectedHouse$Price),
-      tags$br(),
-      sprintf("Address: %s", selectedHouse$Address), tags$br()
-    )))
+      tags$h4("Price:", dollar(selectedHouse$Price)), tags$br(),
+      sprintf("Address: %s, %s", selectedHouse$Address, selectedHouse$Suburb), tags$br(),
+      sprintf("Distance: %s KM to CBD", selectedHouse$Distance), tags$br(),
+      sprintf("Rooms: %d", selectedHouse$Rooms), tags$br(),
+      sprintf("Bathroom %d", selectedHouse$Bathroom), tags$br(),
+      sprintf("Parking: %d", selectedHouse$Car), tags$br(),
+      sprintf("Landsize: %d ㎡", selectedHouse$Landsize), tags$br(),
+      sprintf("BuildingArea: %d ㎡", selectedHouse$BuildingArea), tags$br(),
+      sprintf("Year Built: %d", selectedHouse$YearBuilt), tags$br()
+     
+    ))
     leafletProxy("map") %>% addPopups(lng, lat, content, layerId = address)
   }
   
