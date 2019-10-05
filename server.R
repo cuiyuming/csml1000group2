@@ -4,9 +4,10 @@ library(scales)
 library(lattice)
 library(dplyr)
 
+
 # Define server logic required to draw a histogram ----
 server <- function(input, output) {
-  
+
   
   # Create the map
   output$map <- renderLeaflet({
@@ -44,6 +45,15 @@ server <- function(input, output) {
     minDistance <- input$distance[1]
     maxDistance <- input$distance[2]
     
+    show(minPrice)
+    show(maxPrice)
+    show(minRooms)
+    show(maxRooms)
+    show(minYear)
+    show(maxYear)
+    show(minDistance)
+    show(maxDistance)
+    
     filteredData <- allhouses %>% 
       filter(Rooms >= minRooms,
              Rooms <= maxRooms,
@@ -53,31 +63,54 @@ server <- function(input, output) {
              Distance <= maxDistance,
              Price >= minPrice,
              Price <= maxPrice)
-    
-    colorData <- filteredData[["Price"]]
-    
-    pal <- colorBin("viridis", colorData, 7, pretty = FALSE)
-    
-    geoData <- filteredData %>% 
-      select(
-        address = Address,
-        price = Price,
-        rooms = Rooms,
-        longitude = Longtitude,
-        latitude = Lattitude
-      )
-
-    maxPrice <- max(geoData[["price"]]) 
-    radius <- geoData[["price"]] / maxPrice * 500
-    
-    leafletProxy("map", data = geoData) %>%
-      clearShapes() %>%
-      addCircles(radius=radius, 
-                 stroke=FALSE, fillOpacity=0.6, layerId = ~address, fillColor=pal(colorData)) %>%
-      
-      addLegend("bottomleft", pal=pal, values=colorData, title="Price Range",
-                layerId="colorLegend")
      
+    if(nrow(filteredData) == 0){
+      leafletProxy("map", data = NULL) %>%
+        clearShapes()
+      
+      output$scatterDistancePrice <- renderPlot({
+        return(NULL)
+      })
+    
+    }else{
+      
+      
+      colorData <- filteredData[["Price"]]
+      
+      pal <- colorBin("viridis", colorData, 7, pretty = FALSE)
+      
+      geoData <- filteredData %>% 
+        dplyr::select(
+          address = Address,
+          price = Price,
+          rooms = Rooms,
+          longitude = Longtitude,
+          latitude = Lattitude
+        )
+      
+  
+      if (nrow(geoData) > 0){
+        maxPrice <- max(geoData[["price"]]) 
+        radius <- geoData[["price"]] / maxPrice * 500
+        
+        leafletProxy("map", data = geoData) %>%
+          clearShapes() %>%
+          addCircles(radius=radius, 
+                     stroke=FALSE, fillOpacity=0.6, layerId = ~address, fillColor=pal(colorData)) %>%
+          
+          addLegend("bottomleft", pal=pal, values=colorData, title="Price Range",
+                    layerId="colorLegend")
+      }
+      
+      output$scatterDistancePrice <- renderPlot({
+        # If no houses are in view, don't plot
+        if (nrow(filteredData) == 0)
+          return(NULL)
+        print(xyplot(Price ~ Distance, data = filteredData, xlim = range(allhouses$Distance), ylim = range(allhouses$Price)))
+      })
+      
+    }
+    
   })
   
   # Show a popup at the given location
