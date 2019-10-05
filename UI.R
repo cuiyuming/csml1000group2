@@ -32,13 +32,13 @@ navbarPage("Melbourne Housing", id="nav",
                                       width = 330, height = "auto",
                                       
                                       h2("Filters"),
-                                      sliderInput("price", "Price Range", 185000, 2070000, value = c(185000, 2070000), step = 10000, sep = "", round = TRUE, dragRange = FALSE),
+                                      sliderInput("price", "Price Range", 185000, 2070000, value = c(185000, 2070000), step = 10000, sep = "", dragRange = FALSE),
                                   
-                                        sliderInput("rooms", "Number of Rooms", 1, 12, value = c(1, 3), sep = "", round = TRUE, dragRange = FALSE),
+                                        sliderInput("rooms", "Number of Rooms", 1, 12, value = c(2, 4), sep = "",  dragRange = FALSE),
                                         
-                                        sliderInput("year", "Build Year", 1830, 2018, value = c(1990, 2000), sep = "", round = TRUE, dragRange = FALSE),
+                                        sliderInput("year", "Build Year", 1830, 2018, value = c(1990, 2000), sep = "",  dragRange = FALSE),
                                     
-                                        sliderInput("distance", "Distance to CBD", 0, 50, value = c(0, 10), sep = "", round = TRUE, dragRange = FALSE)
+                                        sliderInput("distance", "Distance to CBD", 0, 50, value = c(0, 10), sep = "",  dragRange = FALSE)
                                       
                 
                         ),
