@@ -69,7 +69,6 @@ server <- function(input, output) {
         clearShapes()
       
       output$scatterDistancePrice <- renderPlot({
-      
         return(NULL)
       })
     
@@ -81,7 +80,7 @@ server <- function(input, output) {
       pal <- colorBin("viridis", colorData, 7, pretty = FALSE)
       
       geoData <- filteredData %>% 
-        select(
+        dplyr::select(
           address = Address,
           price = Price,
           rooms = Rooms,

@@ -62,13 +62,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r echo=F, message=FALSE, warning=FALSE}
 # Load packages
-library('ggplot2') # visualization
-library('ggthemes') # visualizsation
-library('scales') # visualization
-library('dplyr') # data manipulation
-library('mice') # imputation
+library(ggthemes) # visualizsation
+library(scales) # visualization
+library(dplyr) # data manipulation
+library(mice) # imputation
 library(mlbench)
-library(ggplot2)
 library(lars)
 library(RColorBrewer)
 library(reshape2)
@@ -84,7 +82,7 @@ library(corrplot)
 library(knitr)
 library(Metrics)
 library(tidyverse)
-library("ggpubr")
+library(ggpubr)
 library(Hmisc)
 library(DMwR)
 ```
@@ -127,18 +125,33 @@ dataset <- dataset %>%
   mutate(Postcode = replace(Postcode, Postcode == "", NA))
 
 #remove rows with no price
-dataset <- dataset %>% filter(!is.na(Price))
+#dataset <- dataset %>% filter(!is.na(Price))
 
 #add rowid so we can get to specific row easily for cleaning
-dataset <- tibble::rowid_to_column(dataset, "ROWID")
+#dataset <- tibble::rowid_to_column(dataset, "ROWID")
 
 glimpse(dataset)
 
 ```
 
+# Try to impute the miss values
+```{r}
 
+dataset.pre <- preProcess(dataset[, c(5,9,10,11,12,13,14,15,16,18,19,21)], method = "bagImpute")
+
+dataset.bagImpute <- dataset
+dataset.bagImpute[, c(5,9,10,11,12,13,14,15,16,18,19,21)]  <- predict(dataset.pre,dataset.bagImpute[, c(5,9,10,11,12,13,14,15,16,18,19,21)])
+
+dataset <- dataset.bagImpute
+
+summary(dataset.bagImpute)
+
+```
 #Distribution of numeric variables
 ```{r echo=F, message=FALSE, warning=FALSE}
+
+#add rowid so we can get to specific row easily for cleaning
+dataset <- tibble::rowid_to_column(dataset, "ROWID")
 
 numericcols=c("ROWID","Rooms","Price","Distance","Postcode","Bedroom2","Bathroom","Car","Landsize","BuildingArea","YearBuilt","Propertycount")
 numcols=dataset[numericcols]
@@ -283,45 +296,6 @@ boxplot(dataset$Price, las = 1, ylim=c(0,UL+.5*IQR))
 ```
 
 ###### Impute data######################
-
-
-```{r echo=F, message=FALSE, warning=FALSE}
-
-#numeric variables
-knncolnames=c("Rooms", "Distance", "Postcode", "Bedroom2", "Bathroom", "Car", "Landsize", "BuildingArea", "YearBuilt", "Propertycount")
-knninput=as.data.frame(dataset[, names(dataset) %in% knncolnames])
-
-#need to convert data type to data frame for knnimputation to work on it
-knninput=as.data.frame(knninput)
-
-#before starting impute show variables that have NA
-print("Columns with NA values are as follows-")
-nacols(knninput)
-
-#Run KNN imputation for this sample - warning might take a while....
-knnOutput = knnImputation(knninput, k=3, meth='median')
-
-#"Rooms","Distance","Postcode","Bedroom2","Bathroom","Car","Landsize","BuildingArea","YearBuilt","Propertycount"
-dataset$Rooms = knnOutput$Rooms
-dataset$Distance =knnOutput$Distance
-dataset$Postcode =knnOutput$Postcode 
-dataset$Bedroom2 =knnOutput$Bedroom2 
-dataset$Bathroom =knnOutput$Bathroom 
-dataset$Car =knnOutput$Car 
-dataset$Landsize =knnOutput$Landsize 
-dataset$BuildingArea =knnOutput$BuildingArea 
-dataset$YearBuilt =knnOutput$YearBuilt 
-dataset$Propertycount =knnOutput$Propertycount 
-
-#now find variables that have NA
-print("Columns with NA values are as follows-")
-nacols(knnOutput)
-
-glimpse(knninput)
-glimpse(knnOutput)
-
-
-```
 
 
 ### Data Cleaning, remove highly correlatd variables######################
