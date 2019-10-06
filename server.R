@@ -5,6 +5,13 @@ library(lattice)
 library(dplyr)
 
 
+predictPrice <- function(address) {
+  final_model <- readRDS("./model/final_model.rds")
+  houseItem <- allhouses %>% 
+    filter(Address == address) 
+  return( exp(predict(final_model, houseItem)))
+}
+
 # Define server logic required to draw a histogram ----
 server <- function(input, output) {
 
@@ -118,14 +125,15 @@ server <- function(input, output) {
     selectedHouse <- allhouses[allhouses$Address == address,]
     content <- as.character(tagList(
       tags$h4("Price:", dollar(selectedHouse$Price)), tags$br(),
+      tags$h4("Predicted Price:", dollar(predictPrice(selectedHouse$Address))), tags$br(),
       sprintf("Address: %s, %s", selectedHouse$Address, selectedHouse$Suburb), tags$br(),
       sprintf("Distance: %s KM to CBD", selectedHouse$Distance), tags$br(),
-      sprintf("Rooms: %d", selectedHouse$Rooms), tags$br(),
-      sprintf("Bathroom %d", selectedHouse$Bathroom), tags$br(),
-      sprintf("Parking: %d", selectedHouse$Car), tags$br(),
-      sprintf("Landsize: %d ㎡", selectedHouse$Landsize), tags$br(),
-      sprintf("BuildingArea: %d ㎡", selectedHouse$BuildingArea), tags$br(),
-      sprintf("Year Built: %d", selectedHouse$YearBuilt), tags$br()
+      sprintf("Rooms: %d", round(selectedHouse$Rooms)), tags$br(),
+      sprintf("Bathroom %d", round(selectedHouse$Bathroom)), tags$br(),
+      sprintf("Parking: %d", round(selectedHouse$Car)), tags$br(),
+      sprintf("Landsize: %.2f ㎡", selectedHouse$Landsize), tags$br(),
+      sprintf("BuildingArea: %.2f ㎡", selectedHouse$BuildingArea), tags$br(),
+      sprintf("Year Built: %d", round(selectedHouse$YearBuilt)), tags$br()
      
     ))
     leafletProxy("map") %>% addPopups(lng, lat, content, layerId = address)

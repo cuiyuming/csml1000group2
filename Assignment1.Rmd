@@ -1,5 +1,5 @@
 ---
-title: "Melbourne"
+title: "Melbourne Housing Price"
 author: "Rajiv Kaushik, Madan Bolla, Pratik Chandwni, Yuming Cui"
 date: "22/09/2019"
 output: html_document
@@ -106,6 +106,10 @@ nacols <- function(x){
 dataset <- read_csv("./data/raw/Melbourne_housing_FULL.csv",col_types = cols(Price="i",Postcode="i",Landsize="i",
                                                               Rooms = "i", Bedroom2 = "i",Bathroom="i",Car="i",YearBuilt="i",Propertycount="i"))
 
+dataset$PostcodeFactor <- as.factor(dataset$Postcode)
+
+summary(dataset)
+
 # We only look at certain Methods
 #Method: S - property sold; SP - property sold prior; PI - property passed in; PN - sold prior not disclosed; SN - sold not disclosed; NB - no bid; VB - vendor bid; W - withddatasetn prior to auction; SA - sold after auction; SS - sold after auction price not disclosed. N/A - price or highest bid not available.
 dataset <- dataset %>% filter(Method %in% c("S", "SP","PN","SN","SA","SS"))
@@ -125,7 +129,8 @@ dataset <- dataset %>%
   mutate(Postcode = replace(Postcode, Postcode == "", NA))
 
 #remove rows with no price
-#dataset <- dataset %>% filter(!is.na(Price))
+dataset <- dataset %>% filter(!is.na(Price))
+dataset <- dataset %>% filter(!is.na(Postcode))
 
 #add rowid so we can get to specific row easily for cleaning
 #dataset <- tibble::rowid_to_column(dataset, "ROWID")
@@ -134,19 +139,6 @@ glimpse(dataset)
 
 ```
 
-# Try to impute the miss values
-```{r}
-
-dataset.pre <- preProcess(dataset[, c(5,9,10,11,12,13,14,15,16,18,19,21)], method = "bagImpute")
-
-dataset.bagImpute <- dataset
-dataset.bagImpute[, c(5,9,10,11,12,13,14,15,16,18,19,21)]  <- predict(dataset.pre,dataset.bagImpute[, c(5,9,10,11,12,13,14,15,16,18,19,21)])
-
-dataset <- dataset.bagImpute
-
-summary(dataset.bagImpute)
-
-```
 #Distribution of numeric variables
 ```{r echo=F, message=FALSE, warning=FALSE}
 
@@ -226,6 +218,8 @@ corrplot(cor_result$r, type = "upper", order = "hclust", tl.col = "black", tl.sr
 # scatter plot
 #shows how sales and sale price is correlated to number of rooms 
 ```{r echo=F, message=FALSE, warning=FALSE}
+hist(log(dataset$Price))
+
 ggscatter(dataset, x = "Rooms", y = "Price", 
           add = "reg.line", conf.int = TRUE, 
           cor.coef = TRUE, cor.method = "pearson",
@@ -237,19 +231,18 @@ ggscatter(dataset, x = "Rooms", y = "Price",
 # show the price outliers before removing outliers
 ```{r echo=F, message=FALSE, warning=FALSE}
 
-Q1 = quantile(dataset$Price, 0.25, na.rm=TRUE)
-Q3 = quantile(dataset$Price, 0.75, na.rm=TRUE)
+Q1 = quantile(log(dataset$Price), 0.25, na.rm=TRUE)
+Q3 = quantile(log(dataset$Price), 0.75, na.rm=TRUE)
 
-
-IQR <- IQR(dataset$Price, na.rm=TRUE)
+IQR <- IQR(log(dataset$Price), na.rm=TRUE)
 #now to specify upper/lower limits
 UL <- unname(Q3 + 1.5*IQR)
 LL<- unname(max(Q1 - 1.5*IQR,0))
-#LL <- 0
+LL <- 0
 
 
 #need a better scale
-boxplot(dataset$Price, las = 1, ylim=c(0,UL+.5*IQR))
+boxplot(log(dataset$Price), las = 1)
 
 ```
 
@@ -267,36 +260,50 @@ remove_outliers <- function(x) {
 }
 
 #remove outliers and check after...
-dataset$Price = remove_outliers(dataset$Price)
-
-
+##dataset$Price = remove_outliers(dataset$Price)
 
 #now actually remove it
-dataset <- dataset[rowSums(dataset ==-999999)==0, , drop = FALSE]
-
+# Filter out outliers
+##dataset <- dataset %>% filter(Price !=-999999)
 ```
 
 # show the price outliers AFTER removing outliers
 ```{r echo=F, message=FALSE, warning=FALSE}
 
-Q1 = quantile(dataset$Price, 0.25, na.rm=TRUE)
-Q3 = quantile(dataset$Price, 0.75, na.rm=TRUE)
+Q1 = quantile(log(dataset$Price), 0.25, na.rm=TRUE)
+Q3 = quantile(log(dataset$Price), 0.75, na.rm=TRUE)
 
-
-IQR <- IQR(dataset$Price, na.rm=TRUE)
+IQR <- IQR(log(dataset$Price), na.rm=TRUE)
 #now to specify upper/lower limits
 UL <- unname(Q3 + 1.5*IQR)
 LL<- unname(max(Q1 - 1.5*IQR,0))
-#LL <- 0
+LL <- 0
 
 
 #need a better scale
-boxplot(dataset$Price, las = 1, ylim=c(0,UL+.5*IQR))
+boxplot(log(dataset$Price), las = 1)
 
 ```
 
 ###### Impute data######################
 
+```{r}
+summary(dataset)
+```
+
+# Try to impute the miss values using bagImpute
+```{r, warning = FALSE}
+
+dataset.pre <- preProcess(dataset[, c(10:17, 19, 20, 22)], method = "bagImpute")
+
+dataset.bagImpute <- dataset
+dataset.bagImpute[, c(10:17, 19, 20, 22)]  <- predict(dataset.pre,dataset.bagImpute[, c(10:17, 19, 20, 22)])
+
+dataset <- dataset.bagImpute
+
+summary(dataset.bagImpute)
+
+```
 
 ### Data Cleaning, remove highly correlatd variables######################
 
@@ -317,22 +324,17 @@ dataset <- dataset  %>% dplyr::select(-c("Bedroom2"))
 
 #split training and test data
 set.seed(3456)
-trainingIndex = createDataPartition(dataset$Regionname, p = 0.6, list=FALSE)
+
+trainingIndex = createDataPartition(dataset$PostcodeFactor, p = 0.75, list=FALSE)
+
 trainData = dataset[trainingIndex,]
+
 testData = dataset[-trainingIndex,]
+
 nrow(trainData)
 ```
 
-
-
-
-
-
 ### use trainData and testData for rest of work now
-
-
-
-#
 ```{r}
 library(dplyr)
 print(getwd())
@@ -348,20 +350,22 @@ saveRDS(testData, file = "./data/clean/testdata.Rds")
 #Creating a base Linear Model using all the predictors.
 lm_all <- standardize(
   lm(
-    Price ~ Rooms +  Distance +  BuildingArea + Bathroom + Car      
+    Price ~ Rooms +  Distance +  BuildingArea + Bathroom + Car + PostcodeFactor      
     , data = trainData
   )
 )
 summary(lm_all)
 ```
-```{r}
+```{r, warning=FALSE}
 lm_mod5 <- lm(
-    log(Price) ~ Rooms +  Distance +  BuildingArea       
+    log(Price) ~ Rooms +  Bathroom + Distance +  YearBuilt + PostcodeFactor 
     
     , data = trainData
   )
+saveRDS(lm_mod5, "./model/final_model.rds")
 summary(standardize(lm_mod5))
-cat("RMSE of the final model", rmse(trainData$Price, exp(predict(lm_mod5))))  
+cat("RMSE of the final model", rmse(trainData$Price, exp(predict(lm_mod5))))
+
 ```
 
 
@@ -372,20 +376,33 @@ cat("RMSE of the final model", rmse(trainData$Price, exp(predict(lm_mod5))))
 glimpse(testData)
 
 library(Metrics)
+
 set.seed(77)
+
 new_prediction <- predict(lm_mod5, newdata= testData)
+
 cat("RMSE on Test model", rmse(testData$Price, exp(new_prediction)))  
+
 R2 <- function(y, yhat, ybar, digits = 2) {
   1 - sum((y - yhat)^2)/sum((y - ybar)^2)
 }
+
+show(R2)
+
 actualR2<-R2(y = testData$Price, yhat = exp(predict(lm_mod5,newdata = testData)), 
              mean(testData$Price))
-round(actualR2,2)
+
+round(actualR2, 2)
+
+show(actualR2)
+
 # Performing Cross Validation on Training Set
-lm_model_cv <-train( log(Price) ~ Rooms +  Distance +  BuildingArea + Bathroom,
+lm_model_cv <-train( log(Price) ~ Rooms +  Distance +  BuildingArea + Bathroom + PostcodeFactor ,
                      data = trainData,
                      method= "lm",
                      trControl= trainControl(method="cv", number=10))
+
 cat("RMSE: ", rmse(trainData$Price, exp(predict(lm_model_cv, newdata=  trainData))))
+
 lm_model_cv$results$Rsquared
 ```
